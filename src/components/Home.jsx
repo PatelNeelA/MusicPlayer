@@ -71,8 +71,9 @@ function Home({ activeCategory, categorizedMusicAPI, categorizedVideoArray }) {
       setCurrentMusicDetails(musicObject);
       if (currentAudio.current) {
         currentAudio.current.src = musicObject.songSrc;
-        currentAudio.current.load();
+        currentAudio.current.load(); // Force load new source
         if (isAudioPlaying) {
+          // Only play if it should be playing
           currentAudio.current.play();
         }
       }
@@ -87,9 +88,17 @@ function Home({ activeCategory, categorizedMusicAPI, categorizedVideoArray }) {
     return () => clearInterval(interval);
   }, [currentVideoList.length]);
 
-  const handleAudioPlay = () => {
+  // Modified handleAudioPlay to accept an optional index
+  const handleAudioPlay = (clickedIndex = musicIndex) => {
+    // If a different card's play button was clicked, switch to that song first
+    if (clickedIndex !== musicIndex) {
+      setMusicIndex(clickedIndex);
+      setIsAudioPlaying(true); // Will trigger useEffect to load and play new song
+      return; // Exit to let useEffect handle the playback
+    }
+
+    // Otherwise, toggle play/pause for the currently active song
     if (currentAudio.current && currentMusicDetails) {
-      // Ensure audio element and details exist
       if (currentAudio.current.paused) {
         currentAudio.current.play();
         setIsAudioPlaying(true);
@@ -102,7 +111,6 @@ function Home({ activeCategory, categorizedMusicAPI, categorizedVideoArray }) {
 
   const handleMusicProgressBar = (e) => {
     if (currentAudio.current?.duration) {
-      // Ensure duration is available
       setAudioProgress(e.target.value);
       currentAudio.current.currentTime =
         (e.target.value * currentAudio.current.duration) / 100;
@@ -115,14 +123,12 @@ function Home({ activeCategory, categorizedMusicAPI, categorizedVideoArray }) {
 
   const handleNextSong = () => {
     if (currentMusicList.length > 0) {
-      // Ensure there are songs to play
       setMusicIndex((prevIndex) => (prevIndex + 1) % currentMusicList.length);
     }
   };
 
   const handlePrevSong = () => {
     if (currentMusicList.length > 0) {
-      // Ensure there are songs to play
       setMusicIndex(
         (prevIndex) =>
           (prevIndex - 1 + currentMusicList.length) % currentMusicList.length
@@ -145,13 +151,19 @@ function Home({ activeCategory, categorizedMusicAPI, categorizedVideoArray }) {
     }
   };
 
-  // Function to handle selecting a song from a specific card
+  // Function to handle selecting a song from a specific card (main card click)
   const handleSelectSongFromCard = (index) => {
-    setMusicIndex(index);
-    setIsAudioPlaying(true); // Automatically play when a new song is selected
+    // If clicking the currently playing card, toggle play/pause
+    if (musicIndex === index) {
+      handleAudioPlay(index); // Use the modified handleAudioPlay
+    } else {
+      // If clicking a different card, set it as active and play
+      setMusicIndex(index);
+      setIsAudioPlaying(true);
+    }
   };
 
-  const bgImage = categoryBackgrounds[activeCategory] || englishBackground; // Changed default to englishBackground for consistency
+  const bgImage = categoryBackgrounds[activeCategory] || englishBackground;
 
   // Render a message if no songs are available for the current category
   if (!currentMusicDetails && currentMusicList.length === 0) {
@@ -221,7 +233,6 @@ function Home({ activeCategory, categorizedMusicAPI, categorizedVideoArray }) {
         {currentMusicList.map((song, index) => (
           <div
             key={index}
-            // Adjusted card size to be smaller, aiming for 5 per row on larger screens
             className={`w-full sm:w-[calc(33.33%-1rem)] md:w-[calc(25%-1rem)] lg:w-[calc(20%-1rem)] p-4 flex flex-col items-center text-center rounded-3xl shadow-xl backdrop-blur-2xl border border-white/20 animate-fadeUp
               ${
                 musicIndex === index
@@ -244,7 +255,6 @@ function Home({ activeCategory, categorizedMusicAPI, categorizedVideoArray }) {
             </p>
 
             <img
-              // Adjusted image size to w-24 h-24 for smaller cards
               src={song.songAvatar}
               onClick={handleAvatar}
               className={`w-24 h-24 rounded-full my-3 transition-all duration-500 cursor-pointer shadow-xl hover:scale-105
@@ -298,7 +308,7 @@ function Home({ activeCategory, categorizedMusicAPI, categorizedVideoArray }) {
                 <button
                   onClick={(e) => {
                     e.stopPropagation(); // Prevent card click from propagating
-                    handleAudioPlay();
+                    handleAudioPlay(index); // Pass the index of the clicked card
                   }}
                   className="text-white p-2.5 rounded-full bg-purple-600 hover:bg-purple-700 shadow-lg transition transform hover:scale-105"
                 >
